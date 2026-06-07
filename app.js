@@ -162,7 +162,18 @@ function generatePreflop(settings) {
 
 function generatePostflop(settings) {
   const level = difficultyLevel(settings.difficulty);
-  const position = pick(positions[settings.tableSize]);
+  const table = positions[settings.tableSize];
+
+  const preflopOrder = table;
+  const postflopOrder = ["SB", "BB", "UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN"];
+
+  const hero = pick(table.filter(p => p !== "BB"));
+  const possibleCallers = table.filter(p => p !== hero);
+  const villainPos = pick(possibleCallers);
+
+  const heroActsFirst =
+    postflopOrder.indexOf(hero) < postflopOrder.indexOf(villainPos);
+
   const hand = pick(hands);
   const board = pick(boards);
   const turn = pick(turns);
@@ -172,48 +183,86 @@ function generatePostflop(settings) {
   const street = pick(["flop", "turn", "river"]);
 
   const openSize = settings.trainingType === "cash" ? pick(["2.5bb", "3bb"]) : pick(["2bb", "2.2bb", "2.5bb"]);
-  const callers = pick(["BB calls", "BTN calls", "CO calls", "SB calls"]);
-  const preflopPot = settings.trainingType === "cash" ? pick(["5.5bb", "6.5bb", "7bb"]) : pick(["6bb", "7.5bb", "8.5bb"]);
-  const flopBet = pick(["33% pot", "50% pot", "66% pot"]);
-  const turnPot = pick(["9bb", "12bb", "15bb", "18bb", "22bb"]);
-  const riverPot = pick(["20bb", "26bb", "32bb", "40bb"]);
+  const preflopPot = pick(["5.5bb", "6.5bb", "7bb"]);
+  const flopBet = pick(["33%", "50%", "66%"]);
+  const turnPot = pick(["10bb", "13bb", "16bb", "20bb"]);
+  const riverPot = pick(["22bb", "28bb", "36bb", "44bb"]);
+  const villainBet = pick(["50%", "66%", "75%", "pot-sized"]);
 
+  let facingBet = false;
   let correct;
+  let wrongs;
   let reason;
   let leak;
-  let idealBet = "";
+  let idealBet;
 
-  if (board.includes("A") || board.includes("K")) {
-    correct = "Bet for value";
-    idealBet = "Around 50–66% pot";
-    reason = "You can get called by worse top pairs, second pairs and draws. Checking too much misses value.";
-    leak = "missing value bets";
-  } else if (board.includes("T") && board.includes("9")) {
-    correct = "Bet smaller or check more often";
-    idealBet = "Around 25–40% pot, or check with marginal hands";
-    reason = "Connected boards hit calling ranges hard. You should be more careful with one-pair hands.";
-    leak = "overplaying one pair";
-  } else if (villain.includes("passive") && street === "river") {
-    correct = "Fold more often versus big river aggression";
-    idealBet = "Do not raise. Call only with strong hands.";
-    reason = "Passive low-stakes players are usually value-heavy when they suddenly make big river bets.";
+  if (street === "river" && (villain.includes("passive") || villain.includes("nitty"))) {
+    facingBet = true;
+    correct = "Fold";
+    wrongs = ["Call because you are curious", "Raise bluff", "Jam for protection", "Min-raise"];
+    reason = "A passive or nitty player betting big on the river is usually value-heavy. Without a very strong hand, folding is best.";
     leak = "calling too wide on rivers";
+    idealBet = "No bet size — you are facing a bet.";
+  } else if (board.includes("Q") && board.includes("Q")) {
+    correct = "Check";
+    wrongs = ["Bet 100% pot", "Jam", "Bet for protection", "Raise"];
+    reason = "Paired boards are often good boards to control the pot, especially with marginal showdown value.";
+    leak = "overplaying paired boards";
+    idealBet = "Check often, or use a small bet.";
+  } else if (board.includes("A") || board.includes("K")) {
+    correct = "Bet 50% pot";
+    wrongs = ["Check always", "Jam", "Fold", "Min-bet"];
+    reason = "High-card boards are good for the preflop raiser. You can value bet and deny equity.";
+    leak = "missing value bets";
+    idealBet = "Around 50% pot.";
+  } else if (board.includes("T") && board.includes("9")) {
+    correct = "Bet 33% pot";
+    wrongs = ["Jam", "Bet 100% pot", "Fold", "Check always"];
+    reason = "Connected boards hit the caller more often, so a smaller bet or cautious check is better.";
+    leak = "overplaying one pair";
+    idealBet = "Around 25–40% pot.";
   } else {
-    correct = "Bet medium for value and protection";
-    idealBet = "Around 50% pot";
-    reason = "A medium bet gets value from worse hands and charges draws without overcommitting.";
+    correct = "Bet 50% pot";
+    wrongs = ["Jam", "Fold", "Check always", "Min-bet for information"];
+    reason = "A medium bet gets value from worse hands and charges draws without risking too much.";
     leak = "poor bet sizing";
+    idealBet = "Around 50% pot.";
   }
 
-  const wrongs = [
-    "Check always",
-    "Jam regardless of pot",
-    "Call because you are curious",
-    "Min-bet for information",
-    "Fold all made hands"
-  ];
+  if (facingBet) {
+    wrongs = wrongs.filter(x => !x.toLowerCase().includes("check"));
+  }
 
   const answerSet = makeAnswers(correct, wrongs);
+
+  let actionText = "";
+
+  if (street === "flop") {
+    actionText = heroActsFirst
+      ? `<b>Current pot:</b> ${preflopPot}<br><b>Action:</b> Hero is first to act.`
+      : `<b>Current pot:</b> ${preflopPot}<br><b>Action:</b> Villain checks. Hero to act.`;
+  }
+
+  if (street === "turn") {
+    actionText = `
+      <b>Action:</b> ${heroActsFirst ? "Hero bets " + flopBet + " pot. Villain calls." : "Villain checks. Hero bets " + flopBet + " pot. Villain calls."}<br><br>
+      <b>Turn:</b> ${turn}<br>
+      <b>Current pot:</b> ${turnPot}<br>
+      <b>Action:</b> ${heroActsFirst ? "Hero is first to act." : "Villain checks. Hero to act."}
+    `;
+  }
+
+  if (street === "river") {
+    actionText = `
+      <b>Action:</b> ${heroActsFirst ? "Hero bets " + flopBet + " pot. Villain calls." : "Villain checks. Hero bets " + flopBet + " pot. Villain calls."}<br><br>
+      <b>Turn:</b> ${turn}<br>
+      <b>Current pot:</b> ${turnPot}<br>
+      <b>Action:</b> ${heroActsFirst ? "Hero checks. Villain checks back." : "Villain checks. Hero checks back."}<br><br>
+      <b>River:</b> ${river}<br>
+      <b>Current pot:</b> ${riverPot}<br>
+      <b>Action:</b> ${heroActsFirst ? `Hero checks. Villain bets ${villainBet} pot. Hero to act.` : `Villain bets ${villainBet} pot. Hero to act.`}
+    `;
+  }
 
   return {
     type: "postflop",
@@ -224,23 +273,20 @@ function generatePostflop(settings) {
     history: `
       <b>Game:</b> ${settings.trainingType}<br>
       <b>Table:</b> ${settings.tableSize}-max<br>
-      <b>Hero position:</b> ${position}<br>
+      <b>Hero position:</b> ${hero}<br>
+      <b>Villain position:</b> ${villainPos}<br>
       <b>Effective stack:</b> ${stack}<br>
       <b>Villain:</b> ${villain}<br><br>
 
-      <b>Preflop:</b> Hero opens to ${openSize}. ${callers}.<br>
+      <b>Preflop:</b> Hero opens to ${openSize}. ${villainPos} calls.<br>
       <b>Pot going to flop:</b> ${preflopPot}<br><br>
 
       <b>Flop:</b> ${board}<br>
-      ${street === "flop" ? `<b>Current pot:</b> ${preflopPot}<br><b>Action:</b> Villain checks. Hero to act.` : `<b>Action:</b> Villain checks. Hero bets ${flopBet}. Villain calls.<br>`}
-
-      ${street !== "flop" ? `<br><b>Turn:</b> ${turn}<br><b>Current pot:</b> ${turnPot}<br>` : ""}
-      ${street === "turn" ? `<b>Action:</b> Villain checks. Hero to act.` : ""}
-      ${street === "river" ? `<b>Action:</b> Hero bets ${flopBet}. Villain calls.<br><br><b>River:</b> ${river}<br><b>Current pot:</b> ${riverPot}<br><b>Action:</b> Villain bets large. Hero to act.` : ""}
+      ${actionText}
     `,
     answers: answerSet.answers,
     rightIndex: answerSet.rightIndex,
-    hint: "Think about the pot size, board texture, position and what worse hands can call.",
+    hint: "First check who acts first. Then ask: am I facing a bet, or choosing whether to bet/check?",
     explanation: `${reason}<br><br><b>Suggested sizing:</b> ${idealBet}`,
     leak,
     idParts: [
@@ -248,17 +294,14 @@ function generatePostflop(settings) {
       settings.tableSize,
       settings.difficulty,
       "postflop",
-      position,
+      hero,
+      villainPos,
       hand,
       board,
       turn,
       river,
       street,
       villain,
-      openSize,
-      preflopPot,
-      turnPot,
-      riverPot,
       correct
     ]
   };
