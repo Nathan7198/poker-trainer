@@ -1,620 +1,417 @@
-let mode = "mixed";
-let selected = null;
-let current = null;
-let answered = false;
+/* GOLD Poker Trainer - full script.js replacement */
 
-let stats = JSON.parse(localStorage.getItem("pokerStats") || JSON.stringify({
-  hands: 0,
-  correct: 0,
-  streak: 0,
-  best: 0,
-  xp: 0,
-  leaks: {}
-}));
+const STORAGE_KEY = "goldPokerTrainer_v1";
 
-let seenQuestions = JSON.parse(localStorage.getItem("seenQuestions") || "[]");
-
-const positions = {
-  3: ["BTN", "SB", "BB"],
-  6: ["UTG", "HJ", "CO", "BTN", "SB", "BB"],
-  9: ["UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN", "SB", "BB"]
+let app = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
+  mode: "cash",
+  section: "preflop",
+  current: null,
+  shownIds: [],
+  stats: {
+    cash: { hands: 0, correct: 0, streak: 0, best: 0, leaks: {} },
+    tournament: { hands: 0, correct: 0, streak: 0, best: 0, leaks: {} }
+  }
 };
 
-const hands = [
-  "A♠ A♦", "K♠ K♥", "Q♠ Q♦", "J♠ J♣", "T♠ T♥", "9♠ 9♦", "8♣ 8♦", "7♠ 7♥",
-  "A♠ K♠", "A♦ Q♦", "A♣ J♣", "A♥ T♥", "K♠ Q♠", "K♦ J♦", "Q♠ J♠", "J♥ T♥",
-  "T♠ 9♠", "9♦ 8♦", "8♣ 7♣", "7♥ 6♥", "A♠ K♦", "A♣ Q♥", "A♦ J♣", "K♠ Q♦",
-  "K♣ J♥", "Q♦ T♣", "J♣ 9♦", "A♠ 5♠", "A♥ 4♥", "K♠ 9♠", "Q♣ 8♣", "6♦ 6♣",
-  "5♠ 5♦", "4♣ 4♥", "A♦ 7♣", "K♠ 4♠", "Q♥ 3♣", "J♦ 7♠", "9♣ 4♦"
-];
+const positions = ["UTG", "HJ", "CO", "BTN", "SB", "BB"];
 
-const boards = [
-  "A♥ 9♠ 4♣", "K♣ 8♦ 2♠", "Q♠ T♠ 9♦", "J♥ 7♣ 2♦", "T♦ 8♦ 4♠",
-  "9♣ 6♣ 3♥", "A♠ K♦ 7♣", "Q♥ Q♣ 5♦", "8♠ 7♥ 6♠", "K♠ J♠ 3♦",
-  "A♦ 5♣ 2♥", "T♣ T♥ 9♠", "J♠ 9♦ 4♣", "6♥ 5♥ 2♠", "K♦ 7♦ 4♣"
-];
-
-const turns = ["2♣", "3♦", "4♥", "5♠", "6♦", "7♠", "8♥", "9♣", "T♦", "J♣", "Q♦", "K♥", "A♣"];
-const rivers = ["2♥", "3♠", "4♦", "5♣", "6♠", "7♦", "8♣", "9♥", "T♠", "J♦", "Q♣", "K♣", "A♥"];
-
-const villainTypes = [
-  "tight regular",
-  "loose passive player",
-  "aggressive reg",
-  "calling station",
-  "unknown low-stakes player",
-  "nitty player",
-  "maniac"
-];
-
-const range6 = {
-  "UTG": "77+, AJs+, KQs, AQo+",
-  "HJ": "55+, ATs+, KJs+, QJs, JTs, AQo+, KQo",
-  "CO": "44+, A8s+, KTs+, QTs+, JTs, T9s, AJo+, KQo",
-  "BTN": "22+, A2s+, K7s+, Q8s+, J8s+, T8s+, 98s, A8o+, KTo+, QTo+, JTo",
-  "SB": "22+, A2s+, K8s+, Q9s+, J9s+, T9s, A9o+, KTo+, QTo+",
-  "BB": "Defend wide versus small opens. 3-bet strong hands and suited blockers."
+const hands = {
+  premium: ["AA", "KK", "QQ", "AKs", "AKo"],
+  strong: ["JJ", "TT", "AQs", "AQo", "AJs", "KQs"],
+  medium: ["99", "88", "77", "ATs", "KJs", "QJs", "JTs"],
+  speculative: ["66", "55", "44", "A5s", "KTs", "T9s", "98s", "87s", "76s"],
+  weak: ["K7o", "Q8o", "J6o", "T4s", "93o", "72o"]
 };
 
-const range9 = {
-  "UTG": "88+, AQs+, AK",
-  "UTG+1": "77+, AJs+, KQs, AQo+",
-  "UTG+2": "66+, ATs+, KQs, AQo+",
-  "LJ": "55+, ATs+, KJs+, QJs, JTs, AQo+, KQo",
-  "HJ": "44+, A9s+, KTs+, QTs+, JTs, AJo+, KQo",
-  "CO": "33+, A7s+, K9s+, Q9s+, J9s+, T9s, ATo+, KJo+",
-  "BTN": "22+, A2s+, K6s+, Q8s+, J8s+, T8s+, 98s, A7o+, KTo+, QTo+, JTo",
-  "SB": "22+, A2s+, K8s+, Q9s+, J9s+, T9s, A9o+, KTo+",
-  "BB": "Defend based on open size. Wider versus button, tighter versus early position."
+const boards = {
+  dryTopPair: ["K♦ 8♣ 3♠", "A♣ 7♦ 2♥", "Q♠ 6♣ 2♦", "J♥ 5♠ 2♣"],
+  wetTopPair: ["K♦ Q♦ 9♣", "Q♠ J♠ 8♥", "J♦ T♦ 7♣", "A♠ T♠ 9♦"],
+  drawHeavy: ["9♠ 8♠ 6♦", "T♦ 9♦ 7♣", "J♣ T♣ 8♥", "8♥ 7♥ 5♠"],
+  scaryRiver: ["Q♠ 9♣ 8♣ 7♥ J♣", "K♦ T♦ 6♠ 9♦ 2♦", "A♣ J♠ 7♠ T♠ 4♠"]
 };
 
-function pick(arr) {
+const leakTypes = [
+  "Too passive preflop",
+  "Overfolding big blind",
+  "Missing profitable jams",
+  "Missing value bets",
+  "Poor bet sizing",
+  "Overcalling rivers",
+  "Calling too light in tournaments",
+  "Ignoring board texture"
+];
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(app));
+}
+
+function stat() {
+  return app.stats[app.mode];
+}
+
+function rand(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function shuffle(arr) {
-  return [...arr].sort(() => Math.random() - 0.5);
+function uniqueId(parts) {
+  return parts.join("_").replace(/\s+/g, "");
 }
 
-function getLevel() {
-  return Math.floor(stats.xp / 100) + 1;
-}
+function pickLeakFocus() {
+  const leaks = stat().leaks;
+  const entries = Object.entries(leaks);
 
-function difficultyLevel(difficulty) {
-  if (difficulty === "beginner") return 1;
-  if (difficulty === "intermediate") return 2;
-  if (difficulty === "advanced") return 3;
-  return pick([1, 2, 3]);
-}
-
-function makeAnswers(correct, wrongs) {
-  const all = shuffle([correct, ...shuffle(wrongs).slice(0, 3)]);
-  return {
-    answers: all,
-    rightIndex: all.indexOf(correct)
-  };
-}
-
-function getStack(trainingType, difficulty) {
-  if (trainingType === "cash") return pick(["80bb", "100bb", "120bb", "150bb"]);
-  if (trainingType === "tournament") {
-    if (difficulty === "beginner") return pick(["8bb", "10bb", "12bb", "15bb"]);
-    if (difficulty === "intermediate") return pick(["15bb", "20bb", "25bb", "30bb"]);
-    return pick(["18bb", "25bb", "35bb", "45bb"]);
+  if (!entries.length || Math.random() < 0.35) {
+    return rand(leakTypes);
   }
-  return pick(["10bb", "15bb", "25bb", "40bb", "100bb"]);
+
+  entries.sort((a, b) => b[1] - a[1]);
+  return entries[0][0];
 }
 
-function generatePreflop(settings) {
-  const level = difficultyLevel(settings.difficulty);
-  const position = pick(positions[settings.tableSize]);
-  const hand = pick(hands);
-  const stack = getStack(settings.trainingType, settings.difficulty);
-  const villain = pick(villainTypes);
+function generatePreflop() {
+  const stack =
+    app.mode === "cash"
+      ? rand([80, 100, 120, 150])
+      : rand([8, 12, 15, 20, 25, 30, 40]);
 
-  let correct;
-  let reason;
-  let leak;
+  const position = rand(["UTG", "CO", "BTN", "SB", "BB"]);
+  const leak = pickLeakFocus();
 
-  if (position === "BTN" || position === "CO") {
-    correct = "Open raise";
-    reason = "Late position means fewer players left to act, so you can play wider and apply pressure.";
-    leak = "playing too tight in late position";
-  } else if (position === "SB") {
-    correct = level === 1 ? "Raise or fold, avoid limping too much" : "Use a mixed strategy of raises and selective limps";
-    reason = "Small blind is awkward because you are out of position postflop. Do not complete weak hands automatically.";
-    leak = "calling too wide from small blind";
+  let hand, spot, correct, explanation, options;
+
+  options = ["Fold", "Call", "Raise", "3-bet", "All-in"];
+
+  if (leak === "Missing profitable jams" && app.mode === "tournament" && stack <= 15) {
+    hand = rand([...hands.strong, ...hands.medium]);
+    spot = `Tournament, ${position}, ${stack}bb effective. Action folds to you.`;
+    correct = "All-in";
+    explanation = `${hand} is strong enough to shove at ${stack}bb. Short stacks benefit from fold equity.`;
   } else if (position === "BB") {
-    correct = "Defend selectively";
-    reason = "Big blind gets a discount, but you still need to consider position, hand quality and open size.";
-    leak = "defending big blind too wide";
+    hand = rand([...hands.medium, ...hands.speculative]);
+    spot = `${app.mode} game, Big Blind, ${stack}bb effective. Button raises.`;
+    correct = "Call";
+    explanation = `${hand} is usually good enough to defend versus a Button open. Folding too much in the BB is a leak.`;
+  } else if (["BTN", "CO"].includes(position)) {
+    hand = rand([...hands.strong, ...hands.medium, ...hands.speculative]);
+    spot = `${app.mode} game, ${position}, ${stack}bb effective. Folds to you.`;
+    correct = "Raise";
+    explanation = `${hand} should usually be opened from ${position}. You want initiative and fold equity.`;
   } else {
-    correct = "Play tighter";
-    reason = "Early position ranges must be tighter because many players still act behind you.";
-    leak = "opening too loose from early position";
+    hand = rand([...hands.premium, ...hands.strong, ...hands.medium]);
+    spot = `${app.mode} game, ${position}, ${stack}bb effective. Folds to you.`;
+    correct = hands.premium.includes(hand) || hands.strong.includes(hand) ? "Raise" : "Fold";
+    explanation =
+      correct === "Raise"
+        ? `${hand} is strong enough to open from ${position}.`
+        : `${hand} is too loose from early position. Fold and avoid dominated spots.`;
   }
 
-  const wrongs = ["Fold every time", "Open jam", "Limp/call automatically", "3-bet regardless of action", "Call because the cards look nice"];
-  const answerSet = makeAnswers(correct, wrongs);
-
   return {
+    id: uniqueId(["preflop", app.mode, position, stack, hand, correct, Math.random().toString(36).slice(2, 8)]),
+    title: `${app.mode === "cash" ? "Cash" : "Tournament"} Preflop Decision`,
     type: "preflop",
-    level,
-    format: `${settings.tableSize}-max`,
-    title: `${position}, ${stack}. You have ${hand}. What is the best default preflop approach?`,
-    cards: hand,
-    history: `
-      <b>Game:</b> ${settings.trainingType}<br>
-      <b>Table:</b> ${settings.tableSize}-max<br>
-      <b>Position:</b> ${position}<br>
-      <b>Stack:</b> ${stack}<br>
-      <b>Villain type:</b> ${villain}<br>
-      <b>Action:</b> Folds to you, or action is unopened before your decision.
-    `,
-    answers: answerSet.answers,
-    rightIndex: answerSet.rightIndex,
-    hint: "Think about position first, then stack depth, then hand strength.",
-    explanation: reason,
+    hand,
+    spot,
+    options,
+    correct,
     leak,
-    idParts: [settings.trainingType, settings.tableSize, settings.difficulty, "preflop", position, hand, stack, villain, correct]
+    explanation
   };
 }
 
-function generatePostflop(settings) {
-  const level = difficultyLevel(settings.difficulty);
-  const table = positions[settings.tableSize];
+function generatePostflop() {
+  const leak = pickLeakFocus();
+  const stack = app.mode === "cash" ? rand([70, 90, 100, 130]) : rand([12, 18, 25, 35]);
+  const pot = rand([6.5, 8, 12, 16, 24, 38]);
+  const hand = rand(["A♠ K♠", "A♦ Q♦", "K♣ Q♣", "Q♠ J♠", "J♦ T♦", "9♠ 9♦"]);
+  let board, street, action, legal, bestAction, idealBet, minBet, maxBet, explanation;
 
-  const preflopOrder = table;
-  const postflopOrder = ["SB", "BB", "UTG", "UTG+1", "UTG+2", "LJ", "HJ", "CO", "BTN"];
-
-  const hero = pick(table.filter(p => p !== "BB"));
-  const possibleCallers = table.filter(p => p !== hero);
-  const villainPos = pick(possibleCallers);
-
-  const heroActsFirst =
-    postflopOrder.indexOf(hero) < postflopOrder.indexOf(villainPos);
-
-  const hand = pick(hands);
-  const board = pick(boards);
-  const turn = pick(turns);
-  const river = pick(rivers);
-  const stack = getStack(settings.trainingType, settings.difficulty);
-  const villain = pick(villainTypes);
-  const street = pick(["flop", "turn", "river"]);
-
-  const openSize = settings.trainingType === "cash" ? pick(["2.5bb", "3bb"]) : pick(["2bb", "2.2bb", "2.5bb"]);
-  const preflopPot = pick(["5.5bb", "6.5bb", "7bb"]);
-  const flopBet = pick(["33%", "50%", "66%"]);
-  const turnPot = pick(["10bb", "13bb", "16bb", "20bb"]);
-  const riverPot = pick(["22bb", "28bb", "36bb", "44bb"]);
-  const villainBet = pick(["50%", "66%", "75%", "pot-sized"]);
-
-  let facingBet = false;
-  let correct;
-  let wrongs;
-  let reason;
-  let leak;
-  let idealBet;
-
-  if (street === "river" && (villain.includes("passive") || villain.includes("nitty"))) {
-    facingBet = true;
-    correct = "Fold";
-    wrongs = ["Call because you are curious", "Raise bluff", "Jam for protection", "Min-raise"];
-    reason = "A passive or nitty player betting big on the river is usually value-heavy. Without a very strong hand, folding is best.";
-    leak = "calling too wide on rivers";
-    idealBet = "No bet size — you are facing a bet.";
-  } else if (board.includes("Q") && board.includes("Q")) {
-    correct = "Check";
-    wrongs = ["Bet 100% pot", "Jam", "Bet for protection", "Raise"];
-    reason = "Paired boards are often good boards to control the pot, especially with marginal showdown value.";
-    leak = "overplaying paired boards";
-    idealBet = "Check often, or use a small bet.";
-  } else if (board.includes("A") || board.includes("K")) {
-    correct = "Bet 50% pot";
-    wrongs = ["Check always", "Jam", "Fold", "Min-bet"];
-    reason = "High-card boards are good for the preflop raiser. You can value bet and deny equity.";
-    leak = "missing value bets";
-    idealBet = "Around 50% pot.";
-  } else if (board.includes("T") && board.includes("9")) {
-    correct = "Bet 33% pot";
-    wrongs = ["Jam", "Bet 100% pot", "Fold", "Check always"];
-    reason = "Connected boards hit the caller more often, so a smaller bet or cautious check is better.";
-    leak = "overplaying one pair";
-    idealBet = "Around 25–40% pot.";
+  if (leak === "Missing value bets") {
+    board = rand(boards.dryTopPair);
+    street = "Flop";
+    action = `You raised preflop, one player called, and they check to you. Pot is ${pot}bb.`;
+    legal = ["check", "bet"];
+    bestAction = "bet";
+    idealBet = Math.round(pot * 0.55 * 2) / 2;
+    minBet = Math.round(pot * 0.35 * 2) / 2;
+    maxBet = Math.round(pot * 0.8 * 2) / 2;
+    explanation = "You have a strong value hand on a fairly safe board. Betting builds the pot and charges worse hands.";
+  } else if (leak === "Overcalling rivers" || leak === "Calling too light in tournaments") {
+    board = rand(boards.scaryRiver);
+    street = "River";
+    action = `You raised preflop and bet earlier streets. Villain now makes a large river bet into ${pot}bb.`;
+    legal = ["fold", "call", "raise"];
+    bestAction = "fold";
+    explanation = "This river completes too many straights and flushes. One pair or a marginal made hand should usually fold.";
+  } else if (leak === "Poor bet sizing") {
+    board = rand(boards.wetTopPair);
+    street = "Flop";
+    action = `You raised preflop and got one caller. You have top pair on a wet board. Pot is ${pot}bb.`;
+    legal = ["check", "bet"];
+    bestAction = "bet";
+    idealBet = Math.round(pot * 0.75 * 2) / 2;
+    minBet = Math.round(pot * 0.55 * 2) / 2;
+    maxBet = Math.round(pot * 0.95 * 2) / 2;
+    explanation = "On wet boards, your bet should usually be larger. Small bets give draws too good a price.";
   } else {
-    correct = "Bet 50% pot";
-    wrongs = ["Jam", "Fold", "Check always", "Min-bet for information"];
-    reason = "A medium bet gets value from worse hands and charges draws without risking too much.";
-    leak = "poor bet sizing";
-    idealBet = "Around 50% pot.";
-  }
-
-  if (facingBet) {
-    wrongs = wrongs.filter(x => !x.toLowerCase().includes("check"));
-  }
-
-  const answerSet = makeAnswers(correct, wrongs);
-
-  let actionText = "";
-
-  if (street === "flop") {
-    actionText = heroActsFirst
-      ? `<b>Current pot:</b> ${preflopPot}<br><b>Action:</b> Hero is first to act.`
-      : `<b>Current pot:</b> ${preflopPot}<br><b>Action:</b> Villain checks. Hero to act.`;
-  }
-
-  if (street === "turn") {
-    actionText = `
-      <b>Action:</b> ${heroActsFirst ? "Hero bets " + flopBet + " pot. Villain calls." : "Villain checks. Hero bets " + flopBet + " pot. Villain calls."}<br><br>
-      <b>Turn:</b> ${turn}<br>
-      <b>Current pot:</b> ${turnPot}<br>
-      <b>Action:</b> ${heroActsFirst ? "Hero is first to act." : "Villain checks. Hero to act."}
-    `;
-  }
-
-  if (street === "river") {
-    actionText = `
-      <b>Action:</b> ${heroActsFirst ? "Hero bets " + flopBet + " pot. Villain calls." : "Villain checks. Hero bets " + flopBet + " pot. Villain calls."}<br><br>
-      <b>Turn:</b> ${turn}<br>
-      <b>Current pot:</b> ${turnPot}<br>
-      <b>Action:</b> ${heroActsFirst ? "Hero checks. Villain checks back." : "Villain checks. Hero checks back."}<br><br>
-      <b>River:</b> ${river}<br>
-      <b>Current pot:</b> ${riverPot}<br>
-      <b>Action:</b> ${heroActsFirst ? `Hero checks. Villain bets ${villainBet} pot. Hero to act.` : `Villain bets ${villainBet} pot. Hero to act.`}
-    `;
+    board = rand(boards.drawHeavy);
+    street = rand(["Flop", "Turn"]);
+    action = `You raised preflop and face aggression on a draw-heavy board. Pot is ${pot}bb.`;
+    legal = ["fold", "call", "raise"];
+    bestAction = "call";
+    explanation = "This is a medium-strength spot. Calling controls the pot while keeping worse hands and bluffs in.";
   }
 
   return {
+    id: uniqueId(["postflop", app.mode, leak, hand, board, street, stack, pot, Math.random().toString(36).slice(2, 8)]),
+    title: `${app.mode === "cash" ? "Cash" : "Tournament"} Postflop Scenario`,
     type: "postflop",
-    level,
-    format: `${settings.tableSize}-max`,
-    title: `${street.toUpperCase()} decision. You have ${hand}. Board: ${board}${street !== "flop" ? " " + turn : ""}${street === "river" ? " " + river : ""}. What is your best play?`,
-    cards: hand,
-    history: `
-      <b>Game:</b> ${settings.trainingType}<br>
-      <b>Table:</b> ${settings.tableSize}-max<br>
-      <b>Hero position:</b> ${hero}<br>
-      <b>Villain position:</b> ${villainPos}<br>
-      <b>Effective stack:</b> ${stack}<br>
-      <b>Villain:</b> ${villain}<br><br>
-
-      <b>Preflop:</b> Hero opens to ${openSize}. ${villainPos} calls.<br>
-      <b>Pot going to flop:</b> ${preflopPot}<br><br>
-
-      <b>Flop:</b> ${board}<br>
-      ${actionText}
-    `,
-    answers: answerSet.answers,
-    rightIndex: answerSet.rightIndex,
-    hint: "First check who acts first. Then ask: am I facing a bet, or choosing whether to bet/check?",
-    explanation: `${reason}<br><br><b>Suggested sizing:</b> ${idealBet}`,
+    hand,
+    board,
+    street,
+    pot,
+    stack,
+    action,
+    legal,
+    bestAction,
+    idealBet,
+    minBet,
+    maxBet,
     leak,
-    idParts: [
-      settings.trainingType,
-      settings.tableSize,
-      settings.difficulty,
-      "postflop",
-      hero,
-      villainPos,
-      hand,
-      board,
-      turn,
-      river,
-      street,
-      villain,
-      correct
-    ]
+    explanation
   };
 }
 
-function generatePotOdds(settings) {
-  const level = difficultyLevel(settings.difficulty);
-  const pot = pick([10, 20, 30, 40, 50, 75, 100]);
-  const bet = pick([5, 10, 15, 20, 30, 50]);
-  const finalPot = pot + bet + bet;
-  const equity = Math.round((bet / finalPot) * 100);
+function generateUniqueQuestion() {
+  let question;
 
-  const correct = `${equity}% equity needed`;
-  const wrongs = [`${Math.max(5, equity - 10)}% equity needed`, `${equity + 10}% equity needed`, `${equity + 20}% equity needed`, "50% equity needed"];
-  const answerSet = makeAnswers(correct, wrongs);
+  for (let i = 0; i < 100; i++) {
+    question = app.section === "preflop" ? generatePreflop() : generatePostflop();
 
-  return {
-    type: "potodds",
-    level,
-    format: "Math",
-    title: `Pot is £${pot}. Villain bets £${bet}. You must call £${bet}. What equity do you need?`,
-    cards: "",
-    history: `
-      <b>Formula:</b> Call amount ÷ final pot<br>
-      <b>Current pot:</b> £${pot}<br>
-      <b>Villain bet:</b> £${bet}<br>
-      <b>Your call:</b> £${bet}<br>
-      <b>Final pot if you call:</b> £${finalPot}
-    `,
-    answers: answerSet.answers,
-    rightIndex: answerSet.rightIndex,
-    hint: "Use call amount divided by final pot after your call.",
-    explanation: `You call £${bet} to win a final pot of £${finalPot}. ${bet} ÷ ${finalPot} = about ${equity}%.`,
-    leak: "pot odds mistakes",
-    idParts: [settings.trainingType, settings.tableSize, settings.difficulty, "potodds", pot, bet, finalPot, equity]
-  };
+    if (!app.shownIds.includes(question.id)) {
+      app.shownIds.push(question.id);
+      save();
+      return question;
+    }
+  }
+
+  return question;
 }
 
-function generateReading(settings) {
-  const level = difficultyLevel(settings.difficulty);
-  const villain = pick(villainTypes);
-  const board = pick(boards);
-  const hand = pick(hands);
+function newQuestion() {
+  app.current = generateUniqueQuestion();
+  save();
+  render();
+}
 
-  let correct;
-  let reason;
-  let leak;
+function selectMode(mode) {
+  app.mode = mode;
+  newQuestion();
+}
 
-  if (villain.includes("passive") || villain.includes("nitty")) {
-    correct = "Respect big aggression";
-    reason = "Passive or nitty players are usually value-heavy when they suddenly make large bets or raises.";
-    leak = "paying off passive players";
-  } else if (villain.includes("maniac")) {
-    correct = "Call wider but do not stack off blindly";
-    reason = "Aggressive players bluff more, but you still need blockers, pot odds and board texture.";
-    leak = "over-adjusting versus maniacs";
+function selectSection(section) {
+  app.section = section;
+  newQuestion();
+}
+
+function answerPreflop(choice) {
+  const s = stat();
+  const correct = choice === app.current.correct;
+
+  s.hands++;
+
+  if (correct) {
+    s.correct++;
+    s.streak++;
+    s.best = Math.max(s.best, s.streak);
   } else {
-    correct = "Assign a range, not one exact hand";
-    reason = "Good hand reading means building a range based on preflop action, board texture and betting line.";
-    leak = "guessing exact hands";
+    s.streak = 0;
+    s.leaks[app.current.leak] = (s.leaks[app.current.leak] || 0) + 1;
   }
 
-  const wrongs = ["Assume they always bluff", "Assume they always have the nuts", "Ignore position", "Call because you want to see it"];
-  const answerSet = makeAnswers(correct, wrongs);
+  save();
 
-  return {
-    type: "reading",
-    level,
-    format: `${settings.tableSize}-max`,
-    title: `${villain} takes an unusual aggressive line on ${board}. What should you think about first?`,
-    cards: hand,
-    history: `
-      <b>Villain type:</b> ${villain}<br>
-      <b>Board:</b> ${board}<br>
-      <b>Your hand:</b> ${hand}<br>
-      <b>Action:</b> Villain's line does not match their normal style. You need to interpret their range.
-    `,
-    answers: answerSet.answers,
-    rightIndex: answerSet.rightIndex,
-    hint: "Think in ranges and player types, not fear or curiosity.",
-    explanation: reason,
-    leak,
-    idParts: [settings.trainingType, settings.tableSize, settings.difficulty, "reading", villain, board, hand, correct]
-  };
+  showResult(
+    correct,
+    `Correct answer: ${app.current.correct}`,
+    app.current.explanation
+  );
 }
 
-function generatePushFold(settings) {
-  const level = difficultyLevel(settings.difficulty);
-  const position = pick(positions[settings.tableSize]);
-  const stack = pick(["5bb", "7bb", "9bb", "11bb", "13bb", "15bb"]);
-  const hand = pick(["A♠ 7♦", "K♠ 4♠", "Q♥ T♥", "5♦ 5♣", "A♣ 2♣", "J♠ 9♠", "8♦ 8♣", "K♥ Q♦"]);
+function answerPostflop(action) {
+  const q = app.current;
+  const betInput = document.getElementById("betSize");
+  const betSize = betInput ? Number(betInput.value) : null;
 
-  let correct;
-  let reason;
-  let leak;
-
-  if (position === "BTN" || position === "SB") {
-    correct = "Open jam many playable hands";
-    reason = "At short stacks, fold equity is valuable, especially from late position or blind-vs-blind.";
-    leak = "too passive short stacked";
-  } else {
-    correct = "Jam tighter from early position";
-    reason = "Early position jams need to be stronger because more players can wake up with a hand.";
-    leak = "jamming too loose from early position";
-  }
-
-  const wrongs = ["Limp/fold", "Min-raise/fold every hand", "Fold all non-premiums", "Call and see a flop"];
-  const answerSet = makeAnswers(correct, wrongs);
-
-  return {
-    type: "pushfold",
-    level,
-    format: "Tournament",
-    title: `${position}, ${stack}. You have ${hand}. What is the best short-stack default?`,
-    cards: hand,
-    history: `
-      <b>Game:</b> Tournament<br>
-      <b>Table:</b> ${settings.tableSize}-max<br>
-      <b>Position:</b> ${position}<br>
-      <b>Stack:</b> ${stack}<br>
-      <b>Action:</b> Folds to you. Antes are in play.
-    `,
-    answers: answerSet.answers,
-    rightIndex: answerSet.rightIndex,
-    hint: "At short stacks, fold equity matters. Position changes how wide you can jam.",
-    explanation: reason,
-    leak,
-    idParts: [settings.trainingType, settings.tableSize, settings.difficulty, "pushfold", position, stack, hand, correct]
-  };
-}
-
-function getSettings() {
-  return {
-    trainingType: document.getElementById("trainingType").value,
-    difficulty: document.getElementById("difficulty").value,
-    tableSize: Number(document.getElementById("tableSize").value)
-  };
-}
-
-function generateScenario() {
-  const settings = getSettings();
-  const available = mode === "mixed"
-    ? ["preflop", "postflop", "potodds", "reading", settings.trainingType === "cash" ? "postflop" : "pushfold"]
-    : [mode];
-
-  const chosen = pick(available);
-
-  if (chosen === "preflop") return generatePreflop(settings);
-  if (chosen === "postflop") return generatePostflop(settings);
-  if (chosen === "potodds") return generatePotOdds(settings);
-  if (chosen === "reading") return generateReading(settings);
-  if (chosen === "pushfold") return generatePushFold(settings);
-
-  return generatePreflop(settings);
-}
-
-function newSpot() {
-  let attempt = 0;
-  let scenario;
-
-  do {
-    scenario = generateScenario();
-    scenario.id = scenario.idParts.join("|");
-    attempt++;
-  } while (seenQuestions.includes(scenario.id) && attempt < 300);
-
-  current = scenario;
-  selected = null;
-  answered = false;
-
-  if (!seenQuestions.includes(current.id)) {
-    seenQuestions.push(current.id);
-    localStorage.setItem("seenQuestions", JSON.stringify(seenQuestions));
-  }
-
-  document.getElementById("type").innerText = current.type.toUpperCase();
-  document.getElementById("format").innerText = current.format;
-  document.getElementById("level").innerText = "Level " + getLevel();
-  document.getElementById("xp").innerText = stats.xp + " XP";
-  document.getElementById("trainingLabel").innerText = getSettings().trainingType.toUpperCase();
-  document.getElementById("spot").innerText = current.title;
-  document.getElementById("handHistory").innerHTML = current.history;
-  document.getElementById("cards").innerText = current.cards;
-  document.getElementById("feedback").classList.add("hidden");
-  document.getElementById("answers").innerHTML = "";
-
-  current.answers.forEach((answer, index) => {
-    const button = document.createElement("button");
-    button.className = "answer";
-    button.innerText = String.fromCharCode(65 + index) + ") " + answer;
-    button.onclick = () => select(index, button);
-    document.getElementById("answers").appendChild(button);
-  });
-
-  update();
-}
-
-function select(index, button) {
-  if (answered) return;
-  selected = index;
-  document.querySelectorAll(".answer").forEach(x => x.classList.remove("selected"));
-  button.classList.add("selected");
-}
-
-function check() {
-  if (selected === null) {
-    alert("Pick an answer first");
+  if (!q.legal.includes(action)) {
+    showResult(false, "Illegal action", "That action is not available in this spot.");
     return;
   }
 
-  if (answered) return;
-  answered = true;
+  if (action === "bet" || action === "raise") {
+    if (!betSize || betSize <= 0) {
+      showResult(false, "Enter a bet size", "You need to enter your bet size in big blinds.");
+      return;
+    }
 
-  const ok = selected === current.rightIndex;
-  stats.hands++;
+    if (q.minBet && betSize < q.minBet) {
+      recordMistake(q.leak);
+      showResult(false, "Bet too small", `Better sizing is around ${q.idealBet}bb.`);
+      return;
+    }
 
-  if (ok) {
-    stats.correct++;
-    stats.streak++;
-    stats.best = Math.max(stats.best, stats.streak);
-    stats.xp += current.level * 10;
-  } else {
-    stats.streak = 0;
-    stats.leaks[current.leak] = (stats.leaks[current.leak] || 0) + 1;
-    stats.xp += 2;
+    if (q.maxBet && betSize > q.maxBet) {
+      recordMistake(q.leak);
+      showResult(false, "Bet too large", `Better sizing is around ${q.idealBet}bb.`);
+      return;
+    }
   }
 
-  document.querySelectorAll(".answer").forEach((button, index) => {
-    if (index === current.rightIndex) button.classList.add("correct");
-    if (index === selected && index !== current.rightIndex) button.classList.add("wrong");
-  });
+  const correct = action === q.bestAction;
 
-  const feedback = document.getElementById("feedback");
-  feedback.classList.remove("hidden");
-  feedback.innerHTML = `
-    <b>${ok ? "✅ Correct" : "❌ Not quite"}</b><br><br>
-    ${current.explanation}<br><br>
-    <b>Coach note:</b> ${ok ? "Good decision. Keep thinking in position, ranges and stack depth." : "This mistake has been added to your leak tracker."}
+  if (correct) {
+    const s = stat();
+    s.hands++;
+    s.correct++;
+    s.streak++;
+    s.best = Math.max(s.best, s.streak);
+  } else {
+    recordMistake(q.leak);
+  }
+
+  save();
+
+  showResult(
+    correct,
+    `Best action: ${q.bestAction.toUpperCase()}`,
+    q.explanation + (q.idealBet ? ` Ideal size: about ${q.idealBet}bb.` : "")
+  );
+}
+
+function recordMistake(leak) {
+  const s = stat();
+  s.hands++;
+  s.streak = 0;
+  s.leaks[leak] = (s.leaks[leak] || 0) + 1;
+  save();
+}
+
+function showResult(correct, title, explanation) {
+  document.getElementById("result").innerHTML = `
+    <div class="${correct ? "correct" : "wrong"}">
+      <h3>${correct ? "✅ Correct" : "❌ Not quite"}</h3>
+      <p><strong>${title}</strong></p>
+      <p>${explanation}</p>
+      <button onclick="newQuestion()">Next hand</button>
+    </div>
   `;
 
-  localStorage.setItem("pokerStats", JSON.stringify(stats));
-  update();
+  renderStats();
 }
 
-function hint() {
-  const feedback = document.getElementById("feedback");
-  feedback.classList.remove("hidden");
-  feedback.innerHTML = "💡 <b>Hint:</b> " + current.hint;
-}
-
-function update() {
-  const accuracy = stats.hands ? Math.round((stats.correct / stats.hands) * 100) : 0;
-
-  document.getElementById("hands").innerText = stats.hands;
-  document.getElementById("correct").innerText = stats.correct;
-  document.getElementById("accuracy").innerText = accuracy + "%";
-  document.getElementById("streak").innerText = stats.streak;
-  document.getElementById("best").innerText = stats.best;
-  document.getElementById("seen").innerText = seenQuestions.length;
-  document.getElementById("level").innerText = "Level " + getLevel();
-  document.getElementById("xp").innerText = stats.xp + " XP";
-
-  const leaks = Object.entries(stats.leaks).sort((a, b) => b[1] - a[1]);
-
-  document.getElementById("leaks").innerHTML = leaks.length
-    ? leaks.map(x => `• ${x[0]}: ${x[1]} mistake${x[1] > 1 ? "s" : ""}`).join("<br>")
-    : "Your mistakes will appear here.";
-}
-
-function renderRanges() {
-  const r6 = document.getElementById("ranges6");
-  const r9 = document.getElementById("ranges9");
-
-  r6.innerHTML = Object.entries(range6).map(([pos, range]) => `
-    <div class="range-box">
-      <h4>${pos}</h4>
-      <p>${range}</p>
-    </div>
-  `).join("");
-
-  r9.innerHTML = Object.entries(range9).map(([pos, range]) => `
-    <div class="range-box">
-      <h4>${pos}</h4>
-      <p>${range}</p>
-    </div>
-  `).join("");
-}
-
-document.querySelectorAll(".tab").forEach(button => {
-  button.onclick = () => {
-    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
-    button.classList.add("active");
-    mode = button.dataset.mode;
-    newSpot();
-  };
-});
-
-document.getElementById("trainingType").onchange = newSpot;
-document.getElementById("difficulty").onchange = newSpot;
-document.getElementById("tableSize").onchange = newSpot;
-
-document.getElementById("check").onclick = check;
-document.getElementById("next").onclick = newSpot;
-document.getElementById("hint").onclick = hint;
-
-document.getElementById("resetSeen").onclick = () => {
-  if (confirm("Reset seen questions? This allows old spots to appear again.")) {
-    seenQuestions = [];
-    localStorage.setItem("seenQuestions", JSON.stringify(seenQuestions));
-    update();
-    newSpot();
+function resetProgress() {
+  if (confirm("Reset all stats and question history?")) {
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
   }
-};
+}
 
-renderRanges();
-newSpot();
+function renderStats() {
+  const s = stat();
+  const accuracy = s.hands ? Math.round((s.correct / s.hands) * 100) : 0;
+  const leaks = Object.entries(s.leaks).sort((a, b) => b[1] - a[1]);
+
+  document.getElementById("stats").innerHTML = `
+    <h3>${app.mode === "cash" ? "Cash Game" : "Tournament"} Stats</h3>
+    <p><strong>Hands:</strong> ${s.hands}</p>
+    <p><strong>Accuracy:</strong> ${accuracy}%</p>
+    <p><strong>Current streak:</strong> ${s.streak}</p>
+    <p><strong>Best streak:</strong> ${s.best}</p>
+    <p><strong>Unique questions shown:</strong> ${app.shownIds.length}</p>
+
+    <h4>Common leaks</h4>
+    ${
+      leaks.length
+        ? leaks.map(([leak, count]) => `<p>${leak}: ${count}</p>`).join("")
+        : "<p>No leaks yet.</p>"
+    }
+
+    <button onclick="resetProgress()">Reset progress</button>
+  `;
+}
+
+function render() {
+  const q = app.current;
+  const root = document.getElementById("app") || document.body;
+
+  root.innerHTML = `
+    <div class="trainer">
+      <h1>Poker Trainer</h1>
+
+      <div class="tabs">
+        <button onclick="selectMode('cash')" class="${app.mode === "cash" ? "active" : ""}">
+          Cash Game
+        </button>
+        <button onclick="selectMode('tournament')" class="${app.mode === "tournament" ? "active" : ""}">
+          Tournament
+        </button>
+      </div>
+
+      <div class="tabs">
+        <button onclick="selectSection('preflop')" class="${app.section === "preflop" ? "active" : ""}">
+          Preflop
+        </button>
+        <button onclick="selectSection('postflop')" class="${app.section === "postflop" ? "active" : ""}">
+          Postflop
+        </button>
+      </div>
+
+      <div class="card">
+        <h2>${q.title}</h2>
+        <p><strong>Your hand:</strong> ${q.hand}</p>
+
+        ${
+          q.type === "preflop"
+            ? `
+              <p><strong>Spot:</strong> ${q.spot}</p>
+              ${q.options
+                .map(option => `<button onclick="answerPreflop('${option}')">${option}</button>`)
+                .join("")}
+            `
+            : `
+              <p><strong>Board:</strong> ${q.board}</p>
+              <p><strong>Street:</strong> ${q.street}</p>
+              <p><strong>Pot:</strong> ${q.pot}bb</p>
+              <p><strong>Your stack:</strong> ${q.stack}bb</p>
+              <p><strong>Full action:</strong> ${q.action}</p>
+
+              <div class="actions">
+                ${q.legal.includes("fold") ? `<button onclick="answerPostflop('fold')">Fold</button>` : ""}
+                ${q.legal.includes("check") ? `<button onclick="answerPostflop('check')">Check</button>` : ""}
+                ${q.legal.includes("call") ? `<button onclick="answerPostflop('call')">Call</button>` : ""}
+                ${q.legal.includes("bet") ? `<button onclick="answerPostflop('bet')">Bet</button>` : ""}
+                ${q.legal.includes("raise") ? `<button onclick="answerPostflop('raise')">Raise</button>` : ""}
+              </div>
+
+              ${
+                q.legal.includes("bet") || q.legal.includes("raise")
+                  ? `<input id="betSize" type="number" step="0.5" placeholder="Enter bet size in bb">`
+                  : ""
+              }
+            `
+        }
+
+        <div id="result"></div>
+      </div>
+
+      <div id="stats"></div>
+    </div>
+  `;
+
+  renderStats();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  newQuestion();
+});
