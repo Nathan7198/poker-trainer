@@ -11,21 +11,23 @@
   <header class="hero">
     <p class="tag">Poker Edge Trainer</p>
     <h1>Train real poker decisions.</h1>
-    <p>Thousands of unique poker spots, no repeated questions, leak tracking, XP, levels and position-based training.</p>
+    <p>Cash games, tournaments, difficulty levels, no repeat scenarios, XP, levels, leak tracking and starting hand ranges.</p>
   </header>
 
   <main class="app">
     <section class="card trainer">
-      <div class="tabs">
-        <button class="tab active" data-mode="mixed">Mixed</button>
-        <button class="tab" data-mode="preflop">Preflop</button>
-        <button class="tab" data-mode="postflop">Postflop</button>
-        <button class="tab" data-mode="potodds">Pot Odds</button>
-        <button class="tab" data-mode="reading">Hand Reading</button>
-        <button class="tab" data-mode="pushfold">Push/Fold</button>
-      </div>
+      <h2>Choose your training</h2>
 
       <div class="settings">
+        <label>
+          Training Type
+          <select id="trainingType">
+            <option value="cash">Cash Game</option>
+            <option value="tournament">Tournament</option>
+            <option value="mixed">Mixed</option>
+          </select>
+        </label>
+
         <label>
           Difficulty
           <select id="difficulty">
@@ -46,14 +48,25 @@
         </label>
       </div>
 
+      <div class="tabs">
+        <button class="tab active" data-mode="mixed">Mixed</button>
+        <button class="tab" data-mode="preflop">Preflop</button>
+        <button class="tab" data-mode="postflop">Postflop</button>
+        <button class="tab" data-mode="potodds">Pot Odds</button>
+        <button class="tab" data-mode="reading">Hand Reading</button>
+        <button class="tab" data-mode="pushfold">Push/Fold</button>
+      </div>
+
       <div class="pills">
         <span id="type">Mixed</span>
         <span id="format">6-max</span>
         <span id="level">Level 1</span>
         <span id="xp">0 XP</span>
+        <span id="trainingLabel">Cash</span>
       </div>
 
       <h2 id="spot">Loading...</h2>
+
       <div id="handHistory" class="hand-history"></div>
       <div id="cards" class="cards"></div>
       <div id="answers"></div>
@@ -63,6 +76,7 @@
         <button id="check" class="primary">Check answer</button>
         <button id="next">Next spot</button>
         <button id="hint">Hint</button>
+        <button id="resetSeen" class="danger">Reset seen spots</button>
       </div>
     </section>
 
@@ -78,47 +92,23 @@
       <h2>Leak tracker</h2>
       <div id="leaks" class="small">Your mistakes will appear here.</div>
 
-      <h2>Quick rules</h2>
+      <h2>Coach notes</h2>
       <div class="small">
-        <p><b>Early position:</b> play tighter because more players act after you.</p>
-        <p><b>Button:</b> play widest because you have position.</p>
-        <p><b>Small blind:</b> be careful, you are out of position postflop.</p>
-        <p><b>Low stakes:</b> big passive river aggression is usually value.</p>
-        <p><b>Pot odds:</b> call amount ÷ final pot = equity needed.</p>
+        <p><b>Cash:</b> deeper stacks, more postflop play, better implied odds.</p>
+        <p><b>Tournaments:</b> stack depth, blinds, antes, ICM and push/fold matter more.</p>
+        <p><b>Low stakes:</b> big river raises from passive players are usually value.</p>
       </div>
     </aside>
 
     <section class="card ranges">
       <h2>Starting hand ranges</h2>
-      <p class="small">Simple default opening ranges. Tighten up against aggressive tables and loosen up against weak/passive players.</p>
+      <p class="small">These are simple default opening ranges. Adjust based on stack depth, player type and table aggression.</p>
 
       <h3>6-person table</h3>
       <div id="ranges6" class="range-grid"></div>
 
       <h3>9-person table</h3>
       <div id="ranges9" class="range-grid"></div>
-    </section>
-
-    <section class="card study">
-      <h2>Study focus</h2>
-      <div class="grid">
-        <div>
-          <h3>Preflop</h3>
-          <p>Open, call, 3-bet or fold based on position, stack depth and table size.</p>
-        </div>
-        <div>
-          <h3>Postflop</h3>
-          <p>Practise value betting, protection, board texture and avoiding weak river calls.</p>
-        </div>
-        <div>
-          <h3>Pot odds</h3>
-          <p>Train the maths until it becomes automatic.</p>
-        </div>
-        <div>
-          <h3>Hand reading</h3>
-          <p>Put opponents on ranges rather than guessing one exact hand.</p>
-        </div>
-      </div>
     </section>
   </main>
 
