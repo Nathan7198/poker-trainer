@@ -2,61 +2,64 @@
   box-sizing: border-box;
 }
 
+:root {
+  --bg: #070b12;
+  --panel: #101826;
+  --panel-2: #131f31;
+  --border: rgba(255, 255, 255, 0.09);
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --green: #22c55e;
+  --green-2: #14b8a6;
+  --red: #ef4444;
+  --blue: #60a5fa;
+  --gold: #facc15;
+  --shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: #0d1117;
-  color: #f5f7fa;
-}
-
-.hero {
-  padding: 48px 20px;
-  text-align: center;
-  background: linear-gradient(135deg, #111827, #064e3b);
-}
-
-.tag {
-  color: #34d399;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
-.hero h1 {
-  font-size: 42px;
-  margin: 10px 0;
-}
-
-.hero p {
-  max-width: 760px;
-  margin: 0 auto;
-  color: #d1d5db;
-}
-
-.app {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 20px;
-  max-width: 1200px;
-  margin: 24px auto;
-  padding: 0 20px;
-}
-
-.card {
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 18px;
-  padding: 22px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  font-family: Inter, Arial, sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.16), transparent 34%),
+    radial-gradient(circle at top right, rgba(20, 184, 166, 0.13), transparent 30%),
+    linear-gradient(180deg, #070b12 0%, #0b1220 100%);
+  color: var(--text);
+  min-height: 100vh;
 }
 
 .trainer {
-  min-height: 520px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 34px 18px 60px;
+}
+
+.trainer > h1 {
+  font-size: clamp(34px, 5vw, 62px);
+  line-height: 1;
+  margin: 8px 0 22px;
+  letter-spacing: -2px;
+  background: linear-gradient(135deg, #ffffff, #a7f3d0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.trainer::before {
+  content: "Poker Edge Trainer";
+  display: inline-flex;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  border-radius: 999px;
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.08);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .tabs,
-.settings,
-.pills,
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -64,193 +67,194 @@ body {
   margin: 14px 0;
 }
 
-.settings label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  color: #c9d1d9;
-  font-size: 14px;
-  flex: 1;
-  min-width: 150px;
-}
-
-select {
-  padding: 11px;
-  border-radius: 10px;
-  border: 1px solid #30363d;
-  background: #0d1117;
-  color: white;
-}
-
 button {
-  border: 0;
-  border-radius: 12px;
-  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 15px;
   cursor: pointer;
-  font-weight: 700;
-  background: #21262d;
-  color: white;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  transition: 0.18s ease;
 }
 
 button:hover {
-  filter: brightness(1.15);
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(34, 197, 94, 0.32);
 }
 
-.tab.active,
+button.active,
 .primary {
-  background: #10b981;
-  color: #04130e;
+  background: linear-gradient(135deg, var(--green), var(--green-2));
+  color: #03130d;
+  border-color: transparent;
+  box-shadow: 0 12px 25px rgba(34, 197, 94, 0.2);
 }
 
-.danger {
-  background: #7f1d1d;
-}
-
-.pills span {
-  background: #0d1117;
-  border: 1px solid #30363d;
-  padding: 8px 10px;
-  border-radius: 999px;
-  color: #c9d1d9;
-  font-size: 14px;
-}
-
-.hand-history {
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 14px;
-  padding: 14px;
-  color: #c9d1d9;
-  line-height: 1.5;
-  margin: 14px 0;
-}
-
-.cards {
-  font-size: 26px;
-  font-weight: 800;
+.card {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02)),
+    var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 24px;
   margin: 18px 0;
-  letter-spacing: 2px;
+  box-shadow: var(--shadow);
 }
 
-#answers {
-  display: grid;
-  gap: 10px;
-  margin: 16px 0;
+.card h2 {
+  margin-top: 0;
+  font-size: 26px;
+  letter-spacing: -0.5px;
 }
 
-.answer {
-  text-align: left;
-  background: #0d1117;
-  border: 1px solid #30363d;
+.card h3 {
+  color: #d1fae5;
+  margin-top: 24px;
 }
 
-.answer.selected {
-  border-color: #60a5fa;
-  background: #172554;
+.card p {
+  color: #cbd5e1;
+  line-height: 1.6;
 }
 
-.answer.correct {
-  border-color: #10b981;
-  background: #064e3b;
+.card strong {
+  color: #ffffff;
 }
 
-.answer.wrong {
-  border-color: #ef4444;
-  background: #7f1d1d;
+#stats {
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 22px;
+  margin-top: 18px;
+  box-shadow: var(--shadow);
 }
 
-.feedback {
-  background: #0d1117;
-  border: 1px solid #30363d;
+#stats h3 {
+  margin-top: 0;
+  color: #a7f3d0;
+}
+
+#stats h4 {
+  margin-top: 20px;
+  color: #ffffff;
+}
+
+#stats p {
+  color: #cbd5e1;
+  margin: 8px 0;
+}
+
+input,
+select {
+  width: 100%;
+  max-width: 280px;
+  padding: 13px 14px;
+  margin: 12px 0;
   border-radius: 14px;
-  padding: 16px;
-  margin-top: 14px;
-  line-height: 1.5;
+  border: 1px solid var(--border);
+  background: #07111f;
+  color: var(--text);
+  outline: none;
 }
 
-.hidden {
-  display: none;
+input:focus,
+select:focus {
+  border-color: rgba(34, 197, 94, 0.65);
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.11);
 }
 
-.stat {
-  display: flex;
-  justify-content: space-between;
-  border-bottom: 1px solid #30363d;
-  padding: 10px 0;
+.correct {
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.09);
+  border-radius: 18px;
+  padding: 18px;
 }
 
-.small {
-  color: #c9d1d9;
-  line-height: 1.5;
-  font-size: 14px;
+.wrong {
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.09);
+  border-radius: 18px;
+  padding: 18px;
 }
 
-.ranges {
-  grid-column: 1 / -1;
+.correct h3 {
+  color: #86efac;
 }
 
-.range-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px;
-  margin-bottom: 24px;
+.wrong h3 {
+  color: #fca5a5;
 }
 
-.range-box {
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 14px;
-  padding: 14px;
+#result button {
+  margin-top: 8px;
+  background: linear-gradient(135deg, var(--green), var(--green-2));
+  color: #03130d;
+  border-color: transparent;
 }
 
-.range-box h4 {
-  color: #34d399;
-  margin: 0 0 8px;
+.card:nth-of-type(2) {
+  border-color: rgba(250, 204, 21, 0.16);
 }
 
-footer {
-  text-align: center;
-  color: #8b949e;
-  padding: 30px;
+.card:nth-of-type(2) h2 {
+  color: #fde68a;
 }
 
-@media (max-width: 850px) {
-  .app {
-    grid-template-columns: 1fr;
+.card:nth-of-type(2) p strong {
+  color: #fde68a;
+}
+
+@media (min-width: 900px) {
+  .trainer {
+    display: grid;
+    grid-template-columns: 1.55fr 0.95fr;
+    gap: 22px;
+    align-items: start;
   }
 
-  .hero h1 {
-    font-size: 32px;
+  .trainer::before,
+  .trainer > h1,
+  .trainer > .tabs:nth-of-type(1),
+  .trainer > .tabs:nth-of-type(2),
+  .trainer > .tabs:nth-of-type(3),
+  .trainer > .tabs:nth-of-type(4) {
+    grid-column: 1 / -1;
+  }
+
+  .trainer > .card:first-of-type {
+    grid-column: 1;
+  }
+
+  #stats {
+    grid-column: 2;
+    grid-row: 6;
+  }
+
+  .trainer > .card:last-of-type {
+    grid-column: 1 / -1;
   }
 }
-.bet-box {
-  margin: 14px 0;
-}
 
-.bet-box label {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  color: #c9d1d9;
-  font-size: 14px;
-}
+@media (max-width: 700px) {
+  .trainer {
+    padding: 22px 14px 44px;
+  }
 
-.bet-box input {
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid #30363d;
-  background: #0d1117;
-  color: white;
-}
-.bet-box {
-  margin: 14px 0;
-}
+  button {
+    width: 100%;
+  }
 
-.bet-box label {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  color: #c9d1d9;
-  font-size: 14px;
-}
+  .tabs button,
+  .actions button {
+    flex: 1 1 100%;
+  }
 
+  .card {
+    padding: 18px;
+    border-radius: 18px;
+  }
+}
