@@ -6,11 +6,12 @@
   <title>Poker Edge Trainer</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <header class="hero">
     <p class="tag">Poker Edge Trainer</p>
     <h1>Train real poker decisions.</h1>
-    <p>3-max, 6-max, pot odds, hand reading, push/fold, leak tracking and low-stakes exploit play.</p>
+    <p>Thousands of unique poker spots, no repeated questions, leak tracking, XP, levels and position-based training.</p>
   </header>
 
   <main class="app">
@@ -24,13 +25,36 @@
         <button class="tab" data-mode="pushfold">Push/Fold</button>
       </div>
 
+      <div class="settings">
+        <label>
+          Difficulty
+          <select id="difficulty">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate" selected>Intermediate</option>
+            <option value="advanced">Advanced</option>
+            <option value="mixed">Mixed</option>
+          </select>
+        </label>
+
+        <label>
+          Table Size
+          <select id="tableSize">
+            <option value="3">3-max</option>
+            <option value="6" selected>6-max</option>
+            <option value="9">9-max</option>
+          </select>
+        </label>
+      </div>
+
       <div class="pills">
         <span id="type">Mixed</span>
-        <span id="format">3-max</span>
+        <span id="format">6-max</span>
         <span id="level">Level 1</span>
+        <span id="xp">0 XP</span>
       </div>
 
       <h2 id="spot">Loading...</h2>
+      <div id="handHistory" class="hand-history"></div>
       <div id="cards" class="cards"></div>
       <div id="answers"></div>
       <div id="feedback" class="feedback hidden"></div>
@@ -49,25 +73,38 @@
       <div class="stat"><span>Accuracy</span><b id="accuracy">0%</b></div>
       <div class="stat"><span>Streak</span><b id="streak">0</b></div>
       <div class="stat"><span>Best streak</span><b id="best">0</b></div>
+      <div class="stat"><span>Seen spots</span><b id="seen">0</b></div>
 
       <h2>Leak tracker</h2>
       <div id="leaks" class="small">Your mistakes will appear here.</div>
 
       <h2>Quick rules</h2>
       <div class="small">
+        <p><b>Early position:</b> play tighter because more players act after you.</p>
+        <p><b>Button:</b> play widest because you have position.</p>
+        <p><b>Small blind:</b> be careful, you are out of position postflop.</p>
         <p><b>Low stakes:</b> big passive river aggression is usually value.</p>
-        <p><b>3-max:</b> open wider, especially button and blind-vs-blind.</p>
-        <p><b>Value:</b> bet when worse hands can call, not just because you are scared.</p>
         <p><b>Pot odds:</b> call amount ÷ final pot = equity needed.</p>
       </div>
     </aside>
+
+    <section class="card ranges">
+      <h2>Starting hand ranges</h2>
+      <p class="small">Simple default opening ranges. Tighten up against aggressive tables and loosen up against weak/passive players.</p>
+
+      <h3>6-person table</h3>
+      <div id="ranges6" class="range-grid"></div>
+
+      <h3>9-person table</h3>
+      <div id="ranges9" class="range-grid"></div>
+    </section>
 
     <section class="card study">
       <h2>Study focus</h2>
       <div class="grid">
         <div>
           <h3>Preflop</h3>
-          <p>Learn when to open, call, 3-bet or fold based on position, stack depth and table size.</p>
+          <p>Open, call, 3-bet or fold based on position, stack depth and table size.</p>
         </div>
         <div>
           <h3>Postflop</h3>
@@ -86,7 +123,7 @@
   </main>
 
   <footer>
-    Progress saves on your device once the full app is installed.
+    Progress, XP, leaks and seen questions save on this device.
   </footer>
 
   <script src="app.js"></script>
