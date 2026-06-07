@@ -171,55 +171,96 @@ function generatePostflop(settings) {
   const villain = pick(villainTypes);
   const street = pick(["flop", "turn", "river"]);
 
+  const openSize = settings.trainingType === "cash" ? pick(["2.5bb", "3bb"]) : pick(["2bb", "2.2bb", "2.5bb"]);
+  const callers = pick(["BB calls", "BTN calls", "CO calls", "SB calls"]);
+  const preflopPot = settings.trainingType === "cash" ? pick(["5.5bb", "6.5bb", "7bb"]) : pick(["6bb", "7.5bb", "8.5bb"]);
+  const flopBet = pick(["33% pot", "50% pot", "66% pot"]);
+  const turnPot = pick(["9bb", "12bb", "15bb", "18bb", "22bb"]);
+  const riverPot = pick(["20bb", "26bb", "32bb", "40bb"]);
+
   let correct;
   let reason;
   let leak;
+  let idealBet = "";
 
   if (board.includes("A") || board.includes("K")) {
-    correct = "Bet for value with strong top pair or better";
-    reason = "On high-card boards, the preflop raiser often has range advantage. Strong top pair can get called by worse pairs and draws.";
+    correct = "Bet for value";
+    idealBet = "Around 50–66% pot";
+    reason = "You can get called by worse top pairs, second pairs and draws. Checking too much misses value.";
     leak = "missing value bets";
   } else if (board.includes("T") && board.includes("9")) {
-    correct = "Be cautious on connected boards";
-    reason = "Connected boards hit calls, suited connectors, two pair, straights and strong draws. One pair is more vulnerable.";
+    correct = "Bet smaller or check more often";
+    idealBet = "Around 25–40% pot, or check with marginal hands";
+    reason = "Connected boards hit calling ranges hard. You should be more careful with one-pair hands.";
     leak = "overplaying one pair";
   } else if (villain.includes("passive") && street === "river") {
-    correct = "Fold more often versus big passive river aggression";
-    reason = "Passive low-stakes players under-bluff large river bets. One pair is often not enough.";
+    correct = "Fold more often versus big river aggression";
+    idealBet = "Do not raise. Call only with strong hands.";
+    reason = "Passive low-stakes players are usually value-heavy when they suddenly make big river bets.";
     leak = "calling too wide on rivers";
   } else {
     correct = "Bet medium for value and protection";
-    reason = "A medium bet can charge draws, get value from worse hands and deny equity.";
+    idealBet = "Around 50% pot";
+    reason = "A medium bet gets value from worse hands and charges draws without overcommitting.";
     leak = "poor bet sizing";
   }
 
-  const wrongs = ["Check always", "Jam regardless of pot", "Call because you are curious", "Min-bet for information", "Fold all made hands"];
+  const wrongs = [
+    "Check always",
+    "Jam regardless of pot",
+    "Call because you are curious",
+    "Min-bet for information",
+    "Fold all made hands"
+  ];
+
   const answerSet = makeAnswers(correct, wrongs);
 
   return {
     type: "postflop",
     level,
     format: `${settings.tableSize}-max`,
-    title: `${street.toUpperCase()} decision. You have ${hand}. Board: ${board}${street !== "flop" ? " " + turn : ""}${street === "river" ? " " + river : ""}. Best default?`,
+    title: `${street.toUpperCase()} decision. You have ${hand}. Board: ${board}${street !== "flop" ? " " + turn : ""}${street === "river" ? " " + river : ""}. What is your best play?`,
     cards: hand,
     history: `
       <b>Game:</b> ${settings.trainingType}<br>
       <b>Table:</b> ${settings.tableSize}-max<br>
-      <b>Position:</b> ${position}<br>
-      <b>Stack:</b> ${stack}<br>
-      <b>Villain:</b> ${villain}<br>
-      <b>Preflop:</b> You open raise. Villain calls.<br>
+      <b>Hero position:</b> ${position}<br>
+      <b>Effective stack:</b> ${stack}<br>
+      <b>Villain:</b> ${villain}<br><br>
+
+      <b>Preflop:</b> Hero opens to ${openSize}. ${callers}.<br>
+      <b>Pot going to flop:</b> ${preflopPot}<br><br>
+
       <b>Flop:</b> ${board}<br>
-      ${street !== "flop" ? `<b>Turn:</b> ${turn}<br>` : ""}
-      ${street === "river" ? `<b>River:</b> ${river}<br>` : ""}
-      <b>Action:</b> Villain checks. You are deciding the best default line.
+      ${street === "flop" ? `<b>Current pot:</b> ${preflopPot}<br><b>Action:</b> Villain checks. Hero to act.` : `<b>Action:</b> Villain checks. Hero bets ${flopBet}. Villain calls.<br>`}
+
+      ${street !== "flop" ? `<br><b>Turn:</b> ${turn}<br><b>Current pot:</b> ${turnPot}<br>` : ""}
+      ${street === "turn" ? `<b>Action:</b> Villain checks. Hero to act.` : ""}
+      ${street === "river" ? `<b>Action:</b> Hero bets ${flopBet}. Villain calls.<br><br><b>River:</b> ${river}<br><b>Current pot:</b> ${riverPot}<br><b>Action:</b> Villain bets large. Hero to act.` : ""}
     `,
     answers: answerSet.answers,
     rightIndex: answerSet.rightIndex,
-    hint: "Look at board texture, range advantage and whether worse hands can call.",
-    explanation: reason,
+    hint: "Think about the pot size, board texture, position and what worse hands can call.",
+    explanation: `${reason}<br><br><b>Suggested sizing:</b> ${idealBet}`,
     leak,
-    idParts: [settings.trainingType, settings.tableSize, settings.difficulty, "postflop", position, hand, board, turn, river, street, villain, correct]
+    idParts: [
+      settings.trainingType,
+      settings.tableSize,
+      settings.difficulty,
+      "postflop",
+      position,
+      hand,
+      board,
+      turn,
+      river,
+      street,
+      villain,
+      openSize,
+      preflopPot,
+      turnPot,
+      riverPot,
+      correct
+    ]
   };
 }
 
